@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ role: "reviewer" }));
+const state = vi.hoisted(() => ({
+  role: "reviewer",
+  results: [] as unknown[][],
+  queryIndex: 0,
+}));
 vi.mock("../../src/auth/session.js", async () => {
   const { forbidden } = await import("../../src/http/errors.js");
   return {
@@ -10,6 +14,14 @@ vi.mock("../../src/auth/session.js", async () => {
     },
   };
 });
+vi.mock("../../src/db/transaction.js", () => ({
+  withTransaction: async (callback: (client: unknown) => unknown) => {
+    state.queryIndex = 0;
+    return callback({
+      query: async () => ({ rows: state.results[state.queryIndex++] ?? [] }),
+    });
+  },
+}));
 
 process.env["DATABASE_URL"] ??= "postgres://localhost/trusttask_test";
 process.env["NODE_ENV"] = "test";
@@ -31,4 +43,49 @@ it("blocks reviewers from reversing ledger entries", async () => {
   });
   expect(response.statusCode).toBe(403);
   expect(response.json().error.code).toBe("FORBIDDEN");
+});
+
+it("rejects reusing a reversal key for a different ledger operation", async () => {
+  state.role = "admin";
+  state.results = [
+    [],
+    [{ id: "previous-entry", entry_type: "earning", reverses_entry_id: null }],
+  ];
+  const response = await app.inject({
+    method: "POST",
+    url: `/ledger/${id}/reverse`,
+    payload: {
+      idempotencyKey: "ledger-key-conflict",
+      reason: "This reversal explanation is long enough for validation.",
+    },
+  });
+  expect(response.statusCode).toBe(409);
+  expect(response.json().error.code).toBe("CONFLICT");
+});
+
+it("replays the prior reversal when the same idempotency key is repeated", async () => {
+  state.role = "admin";
+  state.results = [
+    [],
+    [
+      {
+        id: "previous-reversal",
+        entry_type: "reversal",
+        reverses_entry_id: id,
+      },
+    ],
+  ];
+  const response = await app.inject({
+    method: "POST",
+    url: `/ledger/${id}/reverse`,
+    payload: {
+      idempotencyKey: "ledger-key-replay",
+      reason: "This reversal explanation is long enough for validation.",
+    },
+  });
+  expect(response.statusCode).toBe(200);
+  expect(response.json()).toMatchObject({
+    id: "previous-reversal",
+    status: "reversed",
+  });
 });
