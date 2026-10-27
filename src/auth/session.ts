@@ -19,6 +19,12 @@ const tokenPayloadSchema = z.object({
 export type Role = "contributor" | "client" | "reviewer" | "support" | "admin";
 export type Actor = { id: string; email: string; role: Role };
 
+declare module "fastify" {
+  interface FastifyRequest {
+    actor: Actor | null;
+  }
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const derived = (await scrypt(password, salt, 64)) as Buffer;
@@ -90,6 +96,7 @@ export async function actorFromRequest(
   );
   const actor = result.rows[0];
   if (!actor) throw unauthorized();
+  request.actor = actor;
   return actor;
 }
 

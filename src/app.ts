@@ -16,9 +16,14 @@ import {
   recordHttpRequest,
   renderMetrics,
 } from "./observability/metrics.js";
+import {
+  captureServerError,
+  configureErrorTracking,
+} from "./observability/error-tracking.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const config = loadConfig();
+  configureErrorTracking(config.SENTRY_DSN, config.NODE_ENV);
   const app = Fastify({
     logger:
       config.NODE_ENV === "test"
@@ -30,12 +35,15 @@ export async function buildApp(): Promise<FastifyInstance> {
                 "req.headers.authorization",
                 "req.headers.cookie",
                 "req.headers.x-api-key",
+                "req.body.password",
+                "req.body.token",
                 "res.headers.set-cookie",
               ],
               censor: "[REDACTED]",
             },
           },
   });
+  app.decorateRequest("actor", null);
 
   app.addHook("onResponse", async (request, reply) => {
     const route = request.routeOptions.url ?? "unmatched";
@@ -51,6 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       {
         requestId: request.id,
         route,
+        actorId: request.actor?.id,
         statusCode: reply.statusCode,
         responseTimeMs: reply.elapsedTime,
       },
@@ -131,6 +140,11 @@ export async function buildApp(): Promise<FastifyInstance> {
       },
       "Unhandled request error",
     );
+    captureServerError(error, {
+      requestId: request.id,
+      route: request.routeOptions.url ?? "unmatched",
+      actorId: request.actor?.id,
+    });
     return reply.code(500).send({
       error: {
         code: "INTERNAL_ERROR",

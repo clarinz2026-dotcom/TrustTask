@@ -24,7 +24,8 @@ services:
       PORT: 3000
       CORS_ORIGIN: http://localhost:5173
       DATABASE_URL: postgres://trusttask:trusttask_local_only@db:5432/trusttask
-      SESSION_SECRET: local-only-trusttask-session-secret-change-before-deployment
+      SESSION_SECRET: ${SESSION_SECRET:-local-only-trusttask-session-secret-change-before-deployment}
+      SENTRY_DSN:
     ports:
       - "3000:3000"
     depends_on:

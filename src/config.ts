@@ -9,6 +9,7 @@ const schema = z
     HOST: z.string().default("0.0.0.0"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
+    SENTRY_DSN: z.string().url().optional(),
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
     SESSION_SECRET: z
       .string()

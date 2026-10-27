@@ -46,4 +46,23 @@ describe("HTTP foundation", () => {
       error: { code: "VALIDATION_ERROR", message: "Login fields are invalid" },
     });
   });
+
+  it("keeps internal details out of unexpected error responses", async () => {
+    const errorApp = await buildApp();
+    errorApp.get("/test/unexpected-error", async () => {
+      throw new Error("internal database connection string");
+    });
+    await errorApp.ready();
+    try {
+      const response = await errorApp.inject({
+        method: "GET",
+        url: "/test/unexpected-error",
+      });
+      expect(response.statusCode).toBe(500);
+      expect(response.body).not.toContain("connection string");
+      expect(response.json().error.code).toBe("INTERNAL_ERROR");
+    } finally {
+      await errorApp.close();
+    }
+  });
 });

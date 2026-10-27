@@ -2,6 +2,8 @@
 
 The API returns JSON. Except for health, registration, login, and public task browsing, routes require `Authorization: Bearer <token>`. Tokens expire after one hour; the user's current role is read from PostgreSQL on every authenticated request. Errors use `{ "error": { "code", "message", "requestId" } }`. Validation is `400`, unauthorized is `401`, forbidden is `403`, missing/hidden resources are `404`, stale state and duplicate operations are `409`, throttling is `429`, and unexpected errors are `500`.
 
+Unexpected 500 errors are sent to Sentry only when `SENTRY_DSN` is configured. Event request and user payloads are removed, and default PII collection is disabled. The `/metrics` endpoint exposes aggregate request counts and latency by method, route template, and status.
+
 ## Routes
 
 | Method and path                     | Access                                            | Purpose                                                                                                              |

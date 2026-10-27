@@ -22,6 +22,24 @@ describe("configuration", () => {
     ).toThrow();
   });
 
+  it("accepts an optional valid Sentry DSN", () => {
+    expect(
+      loadConfig({
+        DATABASE_URL: "postgres://localhost/db",
+        SENTRY_DSN: "https://public@example.ingest.sentry.io/1",
+      }).SENTRY_DSN,
+    ).toBe("https://public@example.ingest.sentry.io/1");
+  });
+
+  it("rejects malformed Sentry DSNs", () => {
+    expect(() =>
+      loadConfig({
+        DATABASE_URL: "postgres://localhost/db",
+        SENTRY_DSN: "nope",
+      }),
+    ).toThrow();
+  });
+
   it("refuses the local signing key in production mode", () => {
     expect(() =>
       loadConfig({
