@@ -26,7 +26,7 @@ let started = false;
 try {
   started = true;
   run("docker", [...compose, "up", "-d", "--wait", "db"]);
-  for (const script of ["db:migrate", "db:seed", "test:integration"])
+  for (const script of ["db:migrate", "db:seed", "coverage"])
     run("pnpm", [script]);
 } finally {
   if (started) {

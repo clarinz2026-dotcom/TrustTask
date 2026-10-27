@@ -44,9 +44,9 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm coverage
       - run: pnpm db:migrate
       - run: pnpm db:seed
+      - run: pnpm coverage
       - run: pnpm test:integration
       - run: pnpm build
       - run: pnpm audit --audit-level high

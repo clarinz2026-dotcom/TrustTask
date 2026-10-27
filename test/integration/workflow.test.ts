@@ -60,6 +60,13 @@ describe("marketplace workflow", () => {
     });
     expect(created.statusCode).toBe(201);
     const taskId = created.json().id as string;
+    const draft = await app.inject({
+      method: "GET",
+      url: `/tasks/${taskId}`,
+      headers: bearer(clientToken),
+    });
+    expect(draft.statusCode).toBe(200);
+    expect(draft.json().status).toBe("draft");
     expect(
       (
         await app.inject({
@@ -75,6 +82,12 @@ describe("marketplace workflow", () => {
     });
     expect(listed.json().items).toHaveLength(1);
 
+    const publicTask = await app.inject({
+      method: "GET",
+      url: `/tasks/${taskId}`,
+    });
+    expect(publicTask.statusCode).toBe(200);
+
     const claim = await app.inject({
       method: "POST",
       url: `/tasks/${taskId}/claim`,
@@ -82,6 +95,14 @@ describe("marketplace workflow", () => {
     });
     expect(claim.statusCode).toBe(201);
     const assignmentId = claim.json().id as string;
+    for (const token of [clientToken, contributorToken]) {
+      const assignments = await app.inject({
+        method: "GET",
+        url: "/assignments",
+        headers: bearer(token),
+      });
+      expect(assignments.statusCode).toBe(200);
+    }
     const first = await app.inject({
       method: "POST",
       url: `/assignments/${assignmentId}/submissions`,
@@ -98,6 +119,23 @@ describe("marketplace workflow", () => {
         await app.inject({
           method: "POST",
           url: `/reviews/assign`,
+          headers: bearer(adminToken),
+          payload: { submissionId: firstSubmission, reviewerId },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const conflicted = await app.inject({
+      method: "POST",
+      url: `/reviews/${firstSubmission}/conflict`,
+      headers: bearer(reviewerToken),
+      payload: { reason: "A conflict needs reassignment before this review." },
+    });
+    expect(conflicted.statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/reviews/assign",
           headers: bearer(adminToken),
           payload: { submissionId: firstSubmission, reviewerId },
         })
@@ -189,6 +227,13 @@ describe("marketplace workflow", () => {
     });
     expect(simulated.statusCode).toBe(200);
     expect(simulated.json()).toMatchObject({ status: "paid", simulated: true });
+    const attempts = await app.inject({
+      method: "GET",
+      url: `/ledger/${earned[0].id}/payment-attempts`,
+      headers: bearer(contributorToken),
+    });
+    expect(attempts.statusCode).toBe(200);
+    expect(attempts.json().items).toHaveLength(1);
     const duplicate = await app.inject({
       method: "POST",
       url: paymentPath,

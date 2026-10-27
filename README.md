@@ -69,7 +69,9 @@ pnpm test:integration
 pnpm build
 ```
 
-With Docker Compose installed, `pnpm test:ci` starts an isolated PostgreSQL test database, applies migrations, seeds fixtures, and runs the database integration suite. The runner removes its Compose service when it finishes. It uses local port 5433. `docker compose up -d --build` starts the complete local API and database stack on ports 3000 and 5432.
+`pnpm coverage` includes the unit and PostgreSQL integration suites and enforces 70% line and function coverage across the HTTP, auth, domain, observability, and service modules. It needs a migrated, seeded test database; use `pnpm test:ci` to start one with Docker Compose.
+
+With Docker Compose installed, `pnpm test:ci` starts an isolated PostgreSQL test database, applies migrations, seeds fixtures, and runs unit plus database integration tests with coverage thresholds. The runner removes its Compose service when it finishes. It uses local port 5433. `docker compose up -d --build` starts the complete local API and database stack on ports 3000 and 5432. Set `SENTRY_DSN` in `.env` to enable privacy-filtered reporting of unexpected server errors; leave it unset to disable reporting.
 
 Integration tests write synthetic data and should use a disposable database. CI supplies an isolated PostgreSQL service. For local verification, create a separate database, set `DATABASE_URL` to it, then run migration, seed, and integration commands:
 
@@ -87,7 +89,7 @@ Formatting can be checked with `pnpm format:check`.
 
 The SQL migrations create users, tasks, assignments, versioned submissions, reviews, ledger entries, payment attempts/events, support cases, appeals, notifications, and audit events. The migration runner tracks applied versions and applies outstanding migrations transactionally. `pnpm db:seed` is repeatable for deterministic demo identities and task. Do not put production credentials in `.env.example`; local Compose credentials are intentionally non-production.
 
-For deployment, provide PostgreSQL backups with tested restore procedures, use managed secret storage, TLS at the ingress, a least-privilege database role, and a separately reviewed migration process. Compose is a local development configuration, not a production deployment topology. The payment simulator is local only; no payment custody, external provider, email/SMS delivery, file upload, or operational response-time guarantee is implemented.
+For deployment, provide PostgreSQL backups with tested restore procedures, use managed secret storage, TLS at the ingress, a least-privilege database role, and a separately reviewed migration process. Set `SENTRY_DSN` in managed secrets to enable privacy-filtered unexpected-error reporting. Compose is a local development configuration, not a production deployment topology. The payment simulator is local only; no payment custody, external provider, email/SMS delivery, file upload, or operational response-time guarantee is implemented.
 
 ## Documentation map
 
