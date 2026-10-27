@@ -41,11 +41,11 @@ jobs:
           version: 11.25.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm coverage
       - run: pnpm db:migrate
-      - run: pnpm db:migrate
-      - run: pnpm db:seed
       - run: pnpm db:seed
       - run: pnpm test:integration
       - run: pnpm build

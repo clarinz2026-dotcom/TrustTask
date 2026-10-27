@@ -51,14 +51,12 @@ Phase 0 proposal and Phase 1 foundation are documented. No external evaluator, p
 
 ```powershell
 Copy-Item .env.example .env
-docker compose up -d db
 pnpm install --frozen-lockfile
-pnpm db:migrate
+docker compose up -d --build
 pnpm db:seed
-pnpm dev
 ```
 
-The API listens on port 3000. `GET /health/live` checks that the process is responding; `GET /health/ready` checks the PostgreSQL connection. Seed data is for local development only and is refused when `NODE_ENV=production`. The demo password is printed by the seed command; demo identities cover client, contributor, reviewer, support, and admin roles.
+The API listens on port 3000. Compose waits for PostgreSQL, applies migrations, and starts the API; `pnpm db:seed` adds local demo identities and task data. `GET /health/live` checks that the process is responding; `GET /health/ready` checks PostgreSQL. To run the API from source instead, stop the Compose API with `docker compose stop api` and run `pnpm dev`. Seed data is for local development only and is refused when `NODE_ENV=production`. The demo password is printed by the seed command; demo identities cover client, contributor, reviewer, support, and admin roles.
 
 ## Quality commands
 
@@ -66,9 +64,12 @@ The API listens on port 3000. `GET /health/live` checks that the process is resp
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm coverage
 pnpm test:integration
 pnpm build
 ```
+
+With Docker Compose installed, `pnpm test:ci` starts an isolated PostgreSQL test database, applies migrations, seeds fixtures, and runs the database integration suite. The runner removes its Compose service when it finishes. It uses local port 5433. `docker compose up -d --build` starts the complete local API and database stack on ports 3000 and 5432.
 
 Integration tests write synthetic data and should use a disposable database. CI supplies an isolated PostgreSQL service. For local verification, create a separate database, set `DATABASE_URL` to it, then run migration, seed, and integration commands:
 
