@@ -16,6 +16,16 @@ describe("HTTP foundation", () => {
     expect(response.json()).toEqual({ status: "ok" });
   });
 
+  it("exposes request counts and latency in Prometheus text format", async () => {
+    await app.inject({ method: "GET", url: "/health/live" });
+    const response = await app.inject({ method: "GET", url: "/metrics" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/plain");
+    expect(response.body).toContain("trusttask_http_requests_total");
+    expect(response.body).toContain('route="/health/live"');
+    expect(response.body).toContain("trusttask_http_request_duration_seconds");
+  });
+
   it("returns a stable and safe missing-resource error", async () => {
     const response = await app.inject({ method: "GET", url: "/missing" });
     expect(response.statusCode).toBe(404);

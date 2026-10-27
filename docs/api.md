@@ -8,6 +8,7 @@ The API returns JSON. Except for health, registration, login, and public task br
 | ----------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `GET /health/live`                  | Public                                            | Process liveness.                                                                                                    |
 | `GET /health/ready`                 | Public                                            | PostgreSQL readiness.                                                                                                |
+| `GET /metrics`                      | Public                                            | Prometheus request totals and latency histograms, labeled by method, route template, and status.                     |
 | `POST /auth/register`               | Public, rate limited                              | Create a contributor or client account; passwords are scrypt-hashed.                                                 |
 | `POST /auth/login`                  | Public, rate limited                              | Return a one-hour bearer token.                                                                                      |
 | `GET /tasks`                        | Public                                            | Search published, unexpired tasks with bounded `search`, `page`, `limit`.                                            |

@@ -11,10 +11,52 @@ import { registerSubmissionRoutes } from "./http/submission-routes.js";
 import { registerSupportRoutes } from "./http/support-routes.js";
 import { registerPaymentRoutes } from "./http/payment-routes.js";
 import { registerLedgerRoutes } from "./http/ledger-routes.js";
+import {
+  metricsContentType,
+  recordHttpRequest,
+  renderMetrics,
+} from "./observability/metrics.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const config = loadConfig();
-  const app = Fastify({ logger: config.NODE_ENV !== "test" });
+  const app = Fastify({
+    logger:
+      config.NODE_ENV === "test"
+        ? false
+        : {
+            level: "info",
+            redact: {
+              paths: [
+                "req.headers.authorization",
+                "req.headers.cookie",
+                "req.headers.x-api-key",
+                "res.headers.set-cookie",
+              ],
+              censor: "[REDACTED]",
+            },
+          },
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    const route = request.routeOptions.url ?? "unmatched";
+    recordHttpRequest(
+      {
+        method: request.method,
+        route,
+        status_code: String(reply.statusCode),
+      },
+      reply.elapsedTime,
+    );
+    request.log.info(
+      {
+        requestId: request.id,
+        route,
+        statusCode: reply.statusCode,
+        responseTimeMs: reply.elapsedTime,
+      },
+      "Request completed",
+    );
+  });
 
   await app.register(cors, { origin: config.CORS_ORIGIN });
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
@@ -26,6 +68,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerLedgerRoutes(app);
 
   app.get("/health/live", async () => ({ status: "ok" }));
+  app.get("/metrics", async (_request, reply) => {
+    return reply.type(metricsContentType).send(await renderMetrics());
+  });
   app.get("/health/ready", async (_request, reply) => {
     try {
       await getPool().query("SELECT 1");
